@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-worker
+  labels:
+    app.kubernetes.io/name: workflow-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workflow-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workflow-worker
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: workflow-worker
+          image: innflow/workflow-worker:latest
+          envFrom:
+            - configMapRef:
+                name: innflow-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: innflow-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: innflow-secrets
+                  key: redis-url
+            - name: TEMPORAL_ADDRESS
+              value: temporal.innflow.svc.cluster.local:7233
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.innflow.svc.cluster.local:4318
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

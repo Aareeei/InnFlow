@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: InnFlow
+    orgId: 1
+    folder: InnFlow
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

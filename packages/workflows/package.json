@@ -1,0 +1,33 @@
+{
+  "name": "@innflow/workflows",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test:unit": "jest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@innflow/ai": "workspace:*",
+    "@innflow/config": "workspace:*",
+    "@innflow/database": "workspace:*",
+    "@innflow/domain": "workspace:*",
+    "@temporalio/activity": "^1.11.7",
+    "@temporalio/client": "^1.11.7",
+    "@temporalio/worker": "^1.11.7",
+    "@temporalio/workflow": "^1.11.7"
+  },
+  "devDependencies": {
+    "@innflow/eslint-config": "workspace:*",
+    "@innflow/tsconfig": "workspace:*",
+    "@temporalio/testing": "^1.11.7",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  }
+}

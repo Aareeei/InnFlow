@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-pms-bg font-pms text-pms-text antialiased;
+}
+
+.pms-window {
+  @apply border border-pms-border bg-pms-panel shadow-raised;
+}
+
+.pms-titlebar {
+  @apply flex items-center justify-between bg-gradient-to-r from-pms-highlight to-pms-accent px-3 py-1 text-sm font-bold text-white;
+}
+
+.pms-button {
+  @apply border border-pms-border bg-pms-bg px-3 py-1 text-sm shadow-raised hover:bg-pms-panel active:shadow-inset;
+}
+
+.pms-input {
+  @apply border border-pms-border bg-white px-2 py-1 text-sm shadow-inset;
+}
+
+.pms-table {
+  @apply w-full border-collapse text-sm;
+}
+
+.pms-table th {
+  @apply border border-pms-border bg-pms-bg px-2 py-1 text-left font-bold;
+}
+
+.pms-table td {
+  @apply border border-pms-border px-2 py-1;
+}
+
+.pms-nav-link {
+  @apply block border border-pms-border bg-pms-bg px-3 py-2 text-sm shadow-raised hover:bg-pms-panel;
+}
+
+.pms-nav-link-active {
+  @apply bg-pms-highlight text-white shadow-inset;
+}

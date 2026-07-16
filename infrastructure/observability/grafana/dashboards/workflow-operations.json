@@ -1,0 +1,125 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(increase(innflow_workflow_started_total[1h])) by (tenant_id)",
+          "legendFormat": "{{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Workflows Started (1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(increase(innflow_workflow_completed_total{status=\"COMPLETED\"}[1h]))",
+          "legendFormat": "completed",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(innflow_workflow_completed_total{status=\"FAILED\"}[1h]))",
+          "legendFormat": "failed",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(increase(innflow_workflow_completed_total{status=\"ESCALATED\"}[1h]))",
+          "legendFormat": "escalated",
+          "refId": "C"
+        }
+      ],
+      "title": "Workflow Outcomes (1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum(increase(innflow_approval_pending_total[1h]))",
+          "legendFormat": "pending",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(innflow_approval_resolved_total[1h])) by (decision)",
+          "legendFormat": "{{decision}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Human Approvals (1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "ms" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(innflow_browser_action_duration_bucket[5m])) by (le, action_type))",
+          "legendFormat": "{{action_type}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Browser Action Duration (p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum(increase(innflow_failure_queue_items_total[1h])) by (failure_type)",
+          "legendFormat": "{{failure_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Failure Queue Items (1h)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["innflow", "workflows"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "InnFlow Workflow Operations",
+  "uid": "innflow-workflow-ops",
+  "version": 1
+}

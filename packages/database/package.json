@@ -1,0 +1,31 @@
+{
+  "name": "@innflow/database",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx src/seed.ts",
+    "db:reset": "prisma migrate reset --force",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@innflow/domain": "workspace:*",
+    "@prisma/client": "^6.1.0",
+    "argon2": "^0.41.1"
+  },
+  "devDependencies": {
+    "@innflow/eslint-config": "workspace:*",
+    "@innflow/tsconfig": "workspace:*",
+    "prisma": "^6.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

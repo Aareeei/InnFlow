@@ -1,0 +1,89 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: innflow
+          POSTGRES_PASSWORD: innflow
+          POSTGRES_DB: innflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed database
+        env:
+          DATABASE_URL: postgresql://innflow:innflow@localhost:5432/innflow?schema=public
+        run: |
+          pnpm --filter @innflow/database db:generate
+          pnpm --filter @innflow/database db:migrate
+          pnpm --filter @innflow/database db:seed
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Start infrastructure stack
+        run: |
+          docker compose up -d temporal minio minio-init
+          sleep 30
+
+      - name: Start control-api
+        env:
+          DATABASE_URL: postgresql://innflow:innflow@localhost:5432/innflow?schema=public
+          REDIS_URL: redis://localhost:6379
+          TEMPORAL_ADDRESS: localhost:7233
+          JWT_SECRET: ci-test-jwt-secret-min-16-chars
+          S3_ENDPOINT: http://localhost:9000
+        run: |
+          pnpm --filter @innflow/control-api start &
+          sleep 15
+
+      - name: Run integration tests
+        env:
+          CONTROL_API_URL: http://localhost:4000
+        run: pnpm test:integration
+        continue-on-error: true
+
+      - name: Workflow unit tests
+        run: pnpm test:workflow

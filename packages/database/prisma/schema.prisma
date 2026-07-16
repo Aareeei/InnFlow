@@ -1,0 +1,474 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["control", "pms"]
+}
+
+// ============ CONTROL PLANE ============
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  timezone  String   @default("America/Los_Angeles")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users              User[]
+  guestRequests      GuestRequest[]
+  workflowExecutions WorkflowExecution[]
+  agentRuns          AgentRun[]
+  auditEvents        AuditEvent[]
+  failureQueueItems  FailureQueueItem[]
+  idempotencyRecords IdempotencyRecord[]
+  systemConfigs      SystemConfiguration[]
+
+  @@map("tenants")
+  @@schema("control")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  email        String
+  passwordHash String   @map("password_hash")
+  role         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([email])
+  @@map("users")
+  @@schema("control")
+}
+
+model GuestRequest {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  externalRequestId String?  @map("external_request_id")
+  idempotencyKey    String   @map("idempotency_key")
+  channel           String
+  rawText           String   @map("raw_text")
+  normalizedText    String?  @map("normalized_text")
+  requestType       String?  @map("request_type")
+  status            String   @default("RECEIVED")
+  priority          String   @default("NORMAL")
+  guestName         String?  @map("guest_name")
+  roomNumber        String?  @map("room_number")
+  reservationId     String?  @map("reservation_id")
+  createdBy         String?  @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  workflowExecutions WorkflowExecution[]
+  agentRuns          AgentRun[]
+  humanApprovals     HumanApproval[]
+  failureQueueItems  FailureQueueItem[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([tenantId, externalRequestId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("guest_requests")
+  @@schema("control")
+}
+
+model WorkflowExecution {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  guestRequestId     String    @map("guest_request_id") @db.Uuid
+  temporalWorkflowId String    @map("temporal_workflow_id")
+  temporalRunId      String?   @map("temporal_run_id")
+  status             String    @default("RUNNING")
+  startedAt          DateTime  @default(now()) @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+  failureReason      String?   @map("failure_reason")
+  retryCount         Int       @default(0) @map("retry_count")
+  totalDurationMs    Int?      @map("total_duration_ms")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id])
+  guestRequest   GuestRequest        @relation(fields: [guestRequestId], references: [id])
+  steps          WorkflowStep[]
+  artifacts      ExecutionArtifact[]
+  humanApprovals HumanApproval[]
+  failureItems   FailureQueueItem[]
+
+  @@unique([temporalWorkflowId])
+  @@index([tenantId, status])
+  @@map("workflow_executions")
+  @@schema("control")
+}
+
+model WorkflowStep {
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  workflowExecutionId String    @map("workflow_execution_id") @db.Uuid
+  stepType            String    @map("step_type")
+  stepName            String    @map("step_name")
+  status              String    @default("PENDING")
+  attempt             Int       @default(1)
+  inputJson           Json?     @map("input_json")
+  outputJson          Json?     @map("output_json")
+  errorJson           Json?     @map("error_json")
+  startedAt           DateTime? @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  durationMs          Int?      @map("duration_ms")
+
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  artifacts         ExecutionArtifact[]
+
+  @@index([workflowExecutionId])
+  @@index([tenantId])
+  @@map("workflow_steps")
+  @@schema("control")
+}
+
+model AgentRun {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  guestRequestId  String   @map("guest_request_id") @db.Uuid
+  agentType       String   @map("agent_type")
+  provider        String
+  model           String
+  inputJson       Json     @map("input_json")
+  outputJson      Json?    @map("output_json")
+  promptVersion   String   @map("prompt_version")
+  tokenInput      Int      @default(0) @map("token_input")
+  tokenOutput     Int      @default(0) @map("token_output")
+  estimatedCostUsd Float   @default(0) @map("estimated_cost_usd")
+  latencyMs       Int      @default(0) @map("latency_ms")
+  status          String   @default("COMPLETED")
+  errorMessage    String?  @map("error_message")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  guestRequest GuestRequest @relation(fields: [guestRequestId], references: [id])
+  toolCalls  ToolCall[]
+
+  @@index([tenantId, guestRequestId])
+  @@map("agent_runs")
+  @@schema("control")
+}
+
+model ToolCall {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  agentRunId String   @map("agent_run_id") @db.Uuid
+  toolName   String   @map("tool_name")
+  inputJson  Json     @map("input_json")
+  outputJson Json?    @map("output_json")
+  status     String   @default("COMPLETED")
+  durationMs Int      @default(0) @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  agentRun AgentRun @relation(fields: [agentRunId], references: [id])
+
+  @@index([agentRunId])
+  @@map("tool_calls")
+  @@schema("control")
+}
+
+model HumanApproval {
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  guestRequestId      String    @map("guest_request_id") @db.Uuid
+  workflowExecutionId String    @map("workflow_execution_id") @db.Uuid
+  actionType          String    @map("action_type")
+  reason              String
+  status              String    @default("PENDING")
+  requestedAt         DateTime  @default(now()) @map("requested_at")
+  resolvedAt          DateTime? @map("resolved_at")
+  resolvedBy          String?   @map("resolved_by")
+  resolutionNote      String?   @map("resolution_note")
+
+  guestRequest      GuestRequest      @relation(fields: [guestRequestId], references: [id])
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("human_approvals")
+  @@schema("control")
+}
+
+model AuditEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  actorType    String   @map("actor_type")
+  actorId      String?  @map("actor_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String   @map("resource_id")
+  metadataJson Json?    @map("metadata_json")
+  traceId      String?  @map("trace_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_events")
+  @@schema("control")
+}
+
+model ExecutionArtifact {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  workflowExecutionId String   @map("workflow_execution_id") @db.Uuid
+  stepId              String?  @map("step_id") @db.Uuid
+  artifactType        String   @map("artifact_type")
+  storageKey          String   @map("storage_key")
+  contentType         String   @map("content_type")
+  metadataJson        Json?    @map("metadata_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  step              WorkflowStep?     @relation(fields: [stepId], references: [id])
+
+  @@index([workflowExecutionId])
+  @@map("execution_artifacts")
+  @@schema("control")
+}
+
+model FailureQueueItem {
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  guestRequestId      String    @map("guest_request_id") @db.Uuid
+  workflowExecutionId String    @map("workflow_execution_id") @db.Uuid
+  failureType         String    @map("failure_type")
+  errorCode           String    @map("error_code")
+  errorMessage        String    @map("error_message")
+  payloadJson         Json?     @map("payload_json")
+  status              String    @default("OPEN")
+  retryCount          Int       @default(0) @map("retry_count")
+  firstFailedAt       DateTime  @default(now()) @map("first_failed_at")
+  lastFailedAt        DateTime  @default(now()) @map("last_failed_at")
+  resolvedAt          DateTime? @map("resolved_at")
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  guestRequest      GuestRequest      @relation(fields: [guestRequestId], references: [id])
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("failure_queue_items")
+  @@schema("control")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  idempotencyKey String   @map("idempotency_key")
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseJson   Json     @map("response_json")
+  resourceId     String?  @map("resource_id")
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+  @@schema("control")
+}
+
+model SystemConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  key       String
+  valueJson Json     @map("value_json")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+  @@map("system_configurations")
+  @@schema("control")
+}
+
+// ============ PMS ============
+
+model Hotel {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @unique @map("tenant_id") @db.Uuid
+  name      String
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rooms        Room[]
+  guests       Guest[]
+  reservations Reservation[]
+  pmsUsers     PmsUser[]
+
+  @@map("hotels")
+  @@schema("pms")
+}
+
+model PmsUser {
+  id           String @id @default(uuid()) @db.Uuid
+  hotelId      String @map("hotel_id") @db.Uuid
+  username     String
+  passwordHash String @map("password_hash")
+  role         String @default("STAFF")
+
+  hotel Hotel @relation(fields: [hotelId], references: [id])
+
+  @@unique([hotelId, username])
+  @@map("pms_users")
+  @@schema("pms")
+}
+
+model Guest {
+  id        String   @id @default(uuid()) @db.Uuid
+  hotelId   String   @map("hotel_id") @db.Uuid
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  hotel        Hotel         @relation(fields: [hotelId], references: [id])
+  reservations Reservation[]
+
+  @@index([hotelId])
+  @@map("guests")
+  @@schema("pms")
+}
+
+model Room {
+  id         String @id @default(uuid()) @db.Uuid
+  hotelId    String @map("hotel_id") @db.Uuid
+  roomNumber String @map("room_number")
+  floor      Int    @default(1)
+  roomType   String @map("room_type")
+  status     String @default("AVAILABLE")
+
+  hotel        Hotel         @relation(fields: [hotelId], references: [id])
+  reservations Reservation[]
+
+  @@unique([hotelId, roomNumber])
+  @@index([hotelId])
+  @@map("rooms")
+  @@schema("pms")
+}
+
+model Reservation {
+  id               String   @id @default(uuid()) @db.Uuid
+  hotelId          String   @map("hotel_id") @db.Uuid
+  guestId          String   @map("guest_id") @db.Uuid
+  roomId           String?  @map("room_id") @db.Uuid
+  confirmationCode String   @map("confirmation_code")
+  checkIn          DateTime @map("check_in")
+  checkOut         DateTime @map("check_out")
+  guestCount       Int      @default(1) @map("guest_count")
+  status           String   @default("CONFIRMED")
+  contactPref      String?  @map("contact_pref")
+  notes            String?
+
+  hotel   Hotel  @relation(fields: [hotelId], references: [id])
+  guest   Guest  @relation(fields: [guestId], references: [id])
+  room    Room?  @relation(fields: [roomId], references: [id])
+
+  @@unique([hotelId, confirmationCode])
+  @@index([hotelId, status])
+  @@map("reservations")
+  @@schema("pms")
+}
+
+model HousekeepingRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  hotelId     String   @map("hotel_id") @db.Uuid
+  roomNumber  String   @map("room_number")
+  item        String
+  quantity    Int      @default(1)
+  status      String   @default("PENDING")
+  notes       String?
+  receiptId   String?  @map("receipt_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([hotelId, receiptId])
+  @@index([hotelId, roomNumber])
+  @@map("housekeeping_requests")
+  @@schema("pms")
+}
+
+model MaintenanceTicket {
+  id          String   @id @default(uuid()) @db.Uuid
+  hotelId     String   @map("hotel_id") @db.Uuid
+  roomNumber  String   @map("room_number")
+  issue       String
+  priority    String   @default("NORMAL")
+  status      String   @default("OPEN")
+  receiptId   String?  @map("receipt_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([hotelId, receiptId])
+  @@index([hotelId])
+  @@map("maintenance_tickets")
+  @@schema("pms")
+}
+
+model WakeUpCall {
+  id         String   @id @default(uuid()) @db.Uuid
+  hotelId    String   @map("hotel_id") @db.Uuid
+  roomNumber String   @map("room_number")
+  callTime   String   @map("call_time")
+  status     String   @default("SCHEDULED")
+  receiptId  String?  @map("receipt_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([hotelId, receiptId])
+  @@index([hotelId, roomNumber])
+  @@map("wake_up_calls")
+  @@schema("pms")
+}
+
+model RestaurantBooking {
+  id            String   @id @default(uuid()) @db.Uuid
+  hotelId       String   @map("hotel_id") @db.Uuid
+  guestName     String   @map("guest_name")
+  partySize     Int      @map("party_size")
+  bookingTime   DateTime @map("booking_time")
+  status        String   @default("CONFIRMED")
+  specialRequests String? @map("special_requests")
+  receiptId     String?  @map("receipt_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([hotelId, receiptId])
+  @@index([hotelId])
+  @@map("restaurant_bookings")
+  @@schema("pms")
+}
+
+model FailureConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  hotelId   String   @unique @map("hotel_id") @db.Uuid
+  configJson Json    @map("config_json")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("failure_configurations")
+  @@schema("pms")
+}
+
+model BrowserActionReceipt {
+  id         String   @id @default(uuid()) @db.Uuid
+  hotelId    String   @map("hotel_id") @db.Uuid
+  receiptId  String   @map("receipt_id")
+  actionType String   @map("action_type")
+  resourceId String?  @map("resource_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([hotelId, receiptId])
+  @@map("browser_action_receipts")
+  @@schema("pms")
+}

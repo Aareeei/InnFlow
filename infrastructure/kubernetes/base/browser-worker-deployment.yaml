@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: browser-worker
+  labels:
+    app.kubernetes.io/name: browser-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: browser-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: browser-worker
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: browser-worker
+          image: innflow/browser-worker:latest
+          envFrom:
+            - configMapRef:
+                name: innflow-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: innflow-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: innflow-secrets
+                  key: redis-url
+            - name: TEMPORAL_ADDRESS
+              value: temporal.innflow.svc.cluster.local:7233
+            - name: MOCK_PMS_URL
+              value: http://mock-pms.innflow.svc.cluster.local:3001
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.innflow.svc.cluster.local:4318
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]

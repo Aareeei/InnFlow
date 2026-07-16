@@ -1,0 +1,49 @@
+{
+  "name": "innflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "InnFlow: Fault-Tolerant Infrastructure for Autonomous Hotel Operations",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:infra": "docker compose up --build -d && pnpm db:migrate && pnpm db:seed",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "jest --config tests/integration/jest.config.ts --runInBand",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "test:workflow": "jest --config packages/workflows/jest.config.ts --runInBand",
+    "test:load": "k6 run tests/load/mixed-scenario.js",
+    "db:migrate": "pnpm --filter @innflow/database db:migrate",
+    "db:seed": "pnpm --filter @innflow/database db:seed",
+    "db:reset": "pnpm --filter @innflow/database db:reset",
+    "demo:housekeeping": "tsx scripts/demo/housekeeping.ts",
+    "demo:multi-action": "tsx scripts/demo/multi-action.ts",
+    "demo:approval": "tsx scripts/demo/approval.ts",
+    "demo:pms-outage": "tsx scripts/demo/pms-outage.ts",
+    "demo:crash-recovery": "tsx scripts/demo/crash-recovery.ts",
+    "demo:duplicate": "tsx scripts/demo/duplicate.ts",
+    "demo:unsupported": "tsx scripts/demo/unsupported.ts",
+    "observability:up": "docker compose up -d prometheus grafana jaeger otel-collector",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "audit": "pnpm audit --audit-level moderate"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.2",
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

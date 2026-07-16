@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Turbo
+.turbo/
+
+# Terraform local state
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Generated artifacts
+artifacts/screenshots/
+artifacts/traces/
+
+# Docker local overrides and data
+docker-compose.override.yml
+postgres-data/
+redis-data/
+minio-data/
+temporal-data/

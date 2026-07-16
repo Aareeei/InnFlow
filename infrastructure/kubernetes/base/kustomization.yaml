@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: innflow
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - control-api-deployment.yaml
+  - control-api-service.yaml
+  - workflow-worker-deployment.yaml
+  - browser-worker-deployment.yaml
+  - mock-pms-deployment.yaml
+  - mock-pms-service.yaml
+  - dashboard-deployment.yaml
+  - dashboard-service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: innflow
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: innflow/control-api
+    newTag: latest
+  - name: innflow/workflow-worker
+    newTag: latest
+  - name: innflow/browser-worker
+    newTag: latest
+  - name: innflow/mock-pms
+    newTag: latest
+  - name: innflow/dashboard
+    newTag: latest
