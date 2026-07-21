@@ -16,7 +16,7 @@ COPY packages/telemetry/package.json ./packages/telemetry/
 COPY packages/workflows/package.json ./packages/workflows/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
@@ -25,15 +25,14 @@ RUN pnpm --filter @innflow/database db:generate
 RUN pnpm --filter @innflow/browser-worker build
 
 FROM mcr.microsoft.com/playwright:v1.49.1-noble AS runner
-RUN groupadd --system --gid 1001 innflow && useradd --system --uid 1001 --gid innflow innflow
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-COPY --from=builder --chown=innflow:innflow /app/apps/browser-worker/dist ./dist
-COPY --from=builder --chown=innflow:innflow /app/apps/browser-worker/package.json ./
-COPY --from=builder --chown=innflow:innflow /app/node_modules ./node_modules
-COPY --from=builder --chown=innflow:innflow /app/packages ./packages
+COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/dist ./dist
+COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/package.json ./
+COPY --from=builder --chown=pwuser:pwuser /app/node_modules ./node_modules
+COPY --from=builder --chown=pwuser:pwuser /app/packages ./packages
 
-USER innflow
+USER pwuser
 CMD ["node", "dist/main.js"]

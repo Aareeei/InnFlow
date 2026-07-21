@@ -13,26 +13,28 @@ COPY packages/domain/package.json ./packages/domain/
 COPY packages/telemetry/package.json ./packages/telemetry/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p apps/mock-pms/public
 RUN pnpm --filter @innflow/database db:generate
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @innflow/mock-pms build
 
-FROM node:20-alpine AS runner
-RUN addgroup --system --gid 1001 innflow && adduser --system --uid 1001 --ingroup innflow innflow
-WORKDIR /app
+FROM base AS runner
 ENV NODE_ENV=production
-
-COPY --from=builder --chown=innflow:innflow /app/apps/mock-pms/dist ./dist
-COPY --from=builder --chown=innflow:innflow /app/apps/mock-pms/package.json ./
-COPY --from=builder --chown=innflow:innflow /app/node_modules ./node_modules
-COPY --from=builder --chown=innflow:innflow /app/packages ./packages
-
-USER innflow
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/apps/mock-pms/public ./apps/mock-pms/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/mock-pms/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/mock-pms/.next/static ./apps/mock-pms/.next/static
+USER nextjs
 EXPOSE 3001
+ENV PORT=3001
+ENV HOSTNAME=0.0.0.0
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD wget -qO- http://localhost:3001/api/health || exit 1
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/mock-pms/server.js"]

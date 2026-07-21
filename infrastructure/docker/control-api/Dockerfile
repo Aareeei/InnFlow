@@ -17,7 +17,7 @@ COPY packages/workflows/package.json ./packages/workflows/
 COPY packages/ai/package.json ./packages/ai/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

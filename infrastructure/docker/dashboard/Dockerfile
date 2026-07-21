@@ -9,11 +9,12 @@ COPY packages/ui/package.json ./packages/ui/
 COPY packages/domain/package.json ./packages/domain/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p apps/dashboard/public
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @innflow/dashboard build
 
