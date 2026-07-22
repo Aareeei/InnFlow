@@ -29,10 +29,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/dist ./dist
-COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/package.json ./
 COPY --from=builder --chown=pwuser:pwuser /app/node_modules ./node_modules
 COPY --from=builder --chown=pwuser:pwuser /app/packages ./packages
+COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/dist ./apps/browser-worker/dist
+COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/package.json ./apps/browser-worker/package.json
+COPY --from=builder --chown=pwuser:pwuser /app/apps/browser-worker/node_modules ./apps/browser-worker/node_modules
 
 USER pwuser
+WORKDIR /app/apps/browser-worker
 CMD ["node", "dist/main.js"]

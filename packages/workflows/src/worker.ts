@@ -9,7 +9,7 @@ export async function createOrchestrationWorker(): Promise<Worker> {
     address: config.TEMPORAL_ADDRESS,
   });
 
-  const workflowsPath = join(__dirname, 'workflows');
+  const workflowsPath = join(__dirname, 'workflows/guest-request.workflow.js');
 
   return Worker.create({
     connection,

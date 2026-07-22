@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { loadConfig } from '@innflow/config';
 import { createLogger, initTracing, shutdownTracing } from '@innflow/telemetry';
@@ -14,7 +15,7 @@ async function bootstrap(): Promise<void> {
   const logger = createLogger('control-api');
 
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  app.useLogger(logger as never);
+  app.useLogger(app.get(Logger));
 
   app.use(helmet());
   app.enableCors({

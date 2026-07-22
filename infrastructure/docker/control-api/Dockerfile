@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:20-bookworm AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
@@ -25,18 +25,20 @@ COPY . .
 RUN pnpm --filter @innflow/database db:generate
 RUN pnpm --filter @innflow/control-api build
 
-FROM node:20-alpine AS runner
-RUN addgroup --system --gid 1001 innflow && adduser --system --uid 1001 --ingroup innflow innflow
+FROM node:20-bookworm AS runner
+RUN groupadd --system --gid 1001 innflow && useradd --system --uid 1001 --gid innflow innflow
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=builder --chown=innflow:innflow /app/apps/control-api/dist ./dist
-COPY --from=builder --chown=innflow:innflow /app/apps/control-api/package.json ./
 COPY --from=builder --chown=innflow:innflow /app/node_modules ./node_modules
 COPY --from=builder --chown=innflow:innflow /app/packages ./packages
+COPY --from=builder --chown=innflow:innflow /app/apps/control-api/dist ./apps/control-api/dist
+COPY --from=builder --chown=innflow:innflow /app/apps/control-api/package.json ./apps/control-api/package.json
+COPY --from=builder --chown=innflow:innflow /app/apps/control-api/node_modules ./apps/control-api/node_modules
 
 USER innflow
+WORKDIR /app/apps/control-api
 EXPOSE 4000
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost:4000/health/live || exit 1
+  CMD wget -qO- http://127.0.0.1:4000/health/live || exit 1
 CMD ["node", "dist/main.js"]
