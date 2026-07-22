@@ -13,20 +13,6 @@ jobs:
     timeout-minutes: 30
 
     services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: innflow
-          POSTGRES_PASSWORD: innflow
-          POSTGRES_DB: innflow
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
       redis:
         image: redis:7-alpine
         ports:
@@ -51,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait postgres
 
       - name: Migrate and seed database
         env:
