@@ -21,6 +21,13 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
+COPY --from=deps /app/packages/domain/node_modules ./packages/domain/node_modules
+COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+COPY --from=deps /app/packages/ai/node_modules ./packages/ai/node_modules
+COPY --from=deps /app/packages/workflows/node_modules ./packages/workflows/node_modules
+COPY --from=deps /app/packages/telemetry/node_modules ./packages/telemetry/node_modules
+COPY --from=deps /app/apps/workflow-worker/node_modules ./apps/workflow-worker/node_modules
 COPY . .
 RUN pnpm --filter @innflow/database db:generate
 RUN pnpm --filter @innflow/workflow-worker build
